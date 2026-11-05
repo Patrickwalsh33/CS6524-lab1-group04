@@ -4,7 +4,7 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, grayscale, plots, blur
+from mypylibs import trajectory, grayscale, plots, blur, threshold
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
@@ -18,10 +18,13 @@ def main(case: int):
 
     gray = grayscale.to_grayscale(img)
     blurred = blur.gaussian_blur(gray, params['sigma'])
+    mask = threshold.calculate(blurred, params['threshold'],
+                               fill=params.get('fill_holes', True))
 
     plots.save_mosaic([('Original', img),
                        ('Grayscale', gray),
-                       (f'Gaussian blur (σ={params["sigma"]})', blurred)],
+                       (f'Gaussian blur (σ={params["sigma"]})', blurred),
+                       (f'Threshold < {params["threshold"]} (largest blob)', mask)],
                       opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
 
     # Expected outputs per case
