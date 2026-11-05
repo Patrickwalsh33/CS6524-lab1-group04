@@ -30,8 +30,10 @@ def main(case: int):
                        ('Thin Sobel border', border)],
                       opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
 
-    # Expected outputs per case
-    # plt.savefig(opath.join(ROOT_OUT, f'{case:02}_trajectory.{EXT}'))
+    x, y = trajectory.calculate(border, params.get('num_samples', 500))
+    plots.save_trajectory(x, y, opath.join(ROOT_OUT, f'{case:02}_trajectory.{EXT}'))
+
+    # Fourier reconstruction is the next stage.
     # plt.savefig(opath.join(ROOT_OUT, f'{case:02}_final.{EXT}'))
 
 if __name__ == '__main__':
