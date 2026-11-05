@@ -4,7 +4,7 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, grayscale, plots
+from mypylibs import trajectory, grayscale, plots, blur
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
@@ -17,8 +17,11 @@ def main(case: int):
         params = yaml.safe_load(f)
 
     gray = grayscale.to_grayscale(img)
+    blurred = blur.gaussian_blur(gray, params['sigma'])
 
-    plots.save_mosaic([('Original', img), ('Grayscale', gray)],
+    plots.save_mosaic([('Original', img),
+                       ('Grayscale', gray),
+                       (f'Gaussian blur (σ={params["sigma"]})', blurred)],
                       opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
 
     # Expected outputs per case
