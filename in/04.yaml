@@ -1,2 +1,2 @@
 sigma: 2.0
-threshold: 0.5
+threshold: 0.8  # whole body and tentacles; 0.5 finds only a sliver

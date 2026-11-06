@@ -1,2 +1,2 @@
 sigma: 2.0
-threshold: 0.5
+threshold: 0.7  # compromise: legs are mostly kept but the outline is rough; at 0.8 the ground shadow fuses them

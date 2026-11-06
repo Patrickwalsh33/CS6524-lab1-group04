@@ -1,2 +1,2 @@
 sigma: 2.0
-threshold: 0.5
+threshold: 0.95  # pale belly is close to the white background, so only joins near the top

@@ -1,2 +1,2 @@
 sigma: 2.0
-threshold: 0.5
+threshold: 0.8  # recovers the pale horn and tail lost at 0.5
