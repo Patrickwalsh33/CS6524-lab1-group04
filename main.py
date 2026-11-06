@@ -4,7 +4,7 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, grayscale, plots
+from mypylibs import trajectory, grayscale, plots, blur, threshold, edges
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
@@ -17,12 +17,23 @@ def main(case: int):
         params = yaml.safe_load(f)
 
     gray = grayscale.to_grayscale(img)
+    blurred = blur.gaussian_blur(gray, params['sigma'])
+    mask = threshold.calculate(blurred, params['threshold'],
+                               fill=params.get('fill_holes', True))
+    magnitude, border = edges.calculate(mask, params.get('edge_threshold', 0.1))
 
-    plots.save_mosaic([('Original', img), ('Grayscale', gray)],
+    plots.save_mosaic([('Original', img),
+                       ('Grayscale', gray),
+                       (f'Gaussian blur (σ={params["sigma"]})', blurred),
+                       (f'Threshold < {params["threshold"]} (largest blob)', mask),
+                       ('Sobel gradient magnitude', magnitude),
+                       ('Thin Sobel border', border)],
                       opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
 
-    # Expected outputs per case
-    # plt.savefig(opath.join(ROOT_OUT, f'{case:02}_trajectory.{EXT}'))
+    x, y = trajectory.calculate(border, params.get('num_samples', 500))
+    plots.save_trajectory(x, y, opath.join(ROOT_OUT, f'{case:02}_trajectory.{EXT}'))
+
+    # Fourier reconstruction is the next stage.
     # plt.savefig(opath.join(ROOT_OUT, f'{case:02}_final.{EXT}'))
 
 if __name__ == '__main__':
