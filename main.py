@@ -4,7 +4,7 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, background, plots, blur, threshold, edges
+from mypylibs import trajectory, background, plots, blur, threshold, edges, morphology
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
@@ -18,17 +18,24 @@ def main(case: int):
 
     distance = background.distance(img)
     blurred = blur.gaussian_blur(distance, params['sigma'])
-    mask = threshold.calculate(blurred, params['threshold'],
-                               fill=params.get('fill_holes', True), above=True)
-    magnitude, border = edges.calculate(mask, params.get('edge_threshold', 0.1))
+    selected = blurred > params['threshold']
+    stages = [('Original', img),
+              ('Distance from background colour', distance),
+              (f'Gaussian blur (σ={params["sigma"]})', blurred),
+              (f'Threshold > {params["threshold"]}', selected)]
 
-    plots.save_mosaic([('Original', img),
-                       ('Distance from background colour', distance),
-                       (f'Gaussian blur (σ={params["sigma"]})', blurred),
-                       (f'Threshold > {params["threshold"]} (largest blob)', mask),
-                       ('Sobel gradient magnitude', magnitude),
-                       ('Thin Sobel border', border)],
-                      opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
+    if 'opening' in params:
+        opening = params['opening']
+        selected = morphology.opening(selected, morphology.build_kernel(opening))
+        stages.append((f'Opening ({opening["shape"]}, size {opening["size"]})', selected))
+
+    mask = threshold.clean(selected, fill=params.get('fill_holes', True))
+    magnitude, border = edges.calculate(mask, params.get('edge_threshold', 0.1))
+    stages += [('Largest blob, holes filled', mask),
+               ('Sobel gradient magnitude', magnitude),
+               ('Thin Sobel border', border)]
+
+    plots.save_mosaic(stages, opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
 
     x, y = trajectory.calculate(border, params.get('num_samples', 500))
     plots.save_trajectory(x, y, opath.join(ROOT_OUT, f'{case:02}_trajectory.{EXT}'))

@@ -27,7 +27,7 @@
 \maketitle
 
 \begin{abstract}
-We extract an animal's outline from a single image so that it can be redrawn with Fourier epicycles. Our first version followed the suggested pipeline with one threshold for every image, and it failed on four of our six images. Choosing a threshold per image fixed two of those four. Measuring each pixel's distance from the background colour instead of its brightness then stopped the duck's paper flooding the mask. The giraffe and tiger are still poor because their ground stays attached to the feet.
+We extract an animal's outline from a single image so that it can be redrawn with Fourier epicycles. Our first version followed the suggested pipeline with one threshold for every image, and it failed on four of our six images. Choosing a threshold per image fixed two of those four. Measuring each pixel's distance from the background colour instead of its brightness then stopped the duck's paper flooding the mask. The giraffe and tiger failed because their ground stayed attached to the feet, and a morphological opening removed it. The giraffe needed a vertical kernel, because a round one could not remove its shadow without damaging its legs.
 \end{abstract}
 
 \section{Introduction}
@@ -53,7 +53,7 @@ The mask keeps pixels that are far enough from the background:
 M(x,y) = D_\sigma(x,y) > T.
 \label{eq:threshold}
 \end{equation}
-Text and watermarks also pass this test, so we keep only the largest 8-connected region. Interior holes are then filled by flooding the background inward from outside the image; anything the flood cannot reach becomes foreground.
+For the giraffe and tiger we then apply a morphological opening (Section~\ref{sec:ground}). Text and watermarks also pass the threshold, so we keep only the largest 8-connected region. Interior holes are then filled by flooding the background inward from outside the image; anything the flood cannot reach becomes foreground.
 
 The border comes from Sobel filters applied to the mask:
 \begin{equation}
@@ -91,7 +91,7 @@ The obvious first change was the threshold, so we swept $T$ from 0.5 to 0.95 wit
 \end{figure}
 
 \begin{table}[t]
-\caption{Chosen thresholds, and the outline from distance}
+\caption{Chosen thresholds, and the final outline from distance}
 \begin{center}
 \begin{tabular}{|l|c|c|l|}
 \hline
@@ -101,8 +101,8 @@ Duck & 0.7 & 0.2 & Legs kept; mound attached \\
 Buffalo & 0.8 & 0.2 & Horn and tail kept \\
 Fish & 0.95 & 0.15 & Whole fish \\
 Squid & 0.8 & 0.15 & Body and tentacles \\
-Giraffe & 0.7 & 0.3 & Legs merge with ground \\
-Tiger & 0.7 & 0.3 & Ground attached \\
+Giraffe & 0.7 & 0.15 & Four legs; muzzle clipped \\
+Tiger & 0.7 & 0.2 & Face and tail; hind legs merge \\
 \hline
 \end{tabular}
 \label{tab:thresholds}
@@ -119,14 +119,33 @@ We swept $D_\sigma$ the same way. The duck no longer floods for any $T$ from 0.0
 
 The gain is smaller on white backgrounds, where a neutral grey pixel's distance is just one minus its brightness. A pale coloured pixel scores a little higher: the tiger's ruff moves from a margin of 0.19 to 0.24, and the giraffe's pale leg from 0.09 to 0.11.
 
-\section{Discussion}
-Distance gave usable outlines for four images, but the giraffe and tiger still fail. On grayscale, the tiger's mask jumps from 24\% to 37\% between $T=0.7$ and $T=0.8$. The face appears, but the ground fuses to the feet, the space between the legs becomes an enclosed hole, and hole filling turns the legs into a solid block. Distance behaves the same way, so we keep $T=0.3$ for these two as a compromise.
+\section{Removing the ground}
+\label{sec:ground}
+Distance gave usable outlines for four images, but the giraffe and tiger still failed. On grayscale, the tiger's mask jumps from 24\% to 37\% between $T=0.7$ and $T=0.8$. The face appears, but the ground fuses to the feet, the space between the legs becomes an enclosed hole, and hole filling turns the legs into a solid block. Distance behaves the same way.
 
 We first assumed the face was lost because it is about as bright as the background. Sampling patches of the tiger showed this was wrong. The ruff has a brightness of 0.81 against 1.00, which a threshold near 0.9 separates easily. The real obstacle is the green ground at 0.52, which is as dark as the orange fur at 0.54, so a threshold that keeps the fur also keeps the ground. The giraffe is similar: its shadow is 0.56, while its pale legs are 0.91 and are the first thing lost.
 
-Colour could separate the tiger's ground, since red is above green on the fur and below green on the ground. It will not help the giraffe, whose shadow and legs have nearly the same hue. We will therefore try a shape-based fix first, because the ground on both images is thin compared with the animal.
+Colour could separate the tiger's ground, since red is above green on the fur and below green on the ground. It will not help the giraffe, whose shadow and legs have nearly the same hue. Both grounds are thin compared with the animal, so we tried a shape-based fix. An opening,
+\begin{equation}
+M \circ B = (M \ominus B) \oplus B,
+\label{eq:opening}
+\end{equation}
+removes any part of the mask that the kernel $B$ cannot fit inside. It has to run before hole filling, or the enclosed gap between the legs is already gone.
 
-Our sweeps also have limits. We picked $T$ by eye, so the values do not come from any rule, and we held $\sigma$ fixed, so we do not yet know how much blur affects these results. The background estimate also assumes that the outer edge of the image is mostly background.
+A disk of radius 5 works on the tiger (Fig.~\ref{fig:ground}). With the ground handled, we could also lower $T$ from 0.3 to 0.2, which brings the face back. The same disk fails on the giraffe. At $T=0.15$ the shadow survives and the legs stay a solid block, while at $T=0.2$ the legs wear down to stubs. The two do differ in shape, though: the legs are thin but tall, and the shadow is thin but wide. A vertical line kernel of length $L=19$ exploits this, removing the shadow and keeping all four legs apart at $T=0.15$.
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{ground_removal.png}}
+\caption{Final masks with no opening, a disk and a vertical line. The disk suits the tiger but leaves the giraffe's shadow, while the line suits the giraffe but cuts the tiger's tail.}
+\label{fig:ground}
+\end{figure}
+
+\section{Discussion}
+All six images now give a recognisable outline, but each fix has a cost. The vertical kernel removes anything thin and horizontal, so the giraffe loses its muzzle and its feet are squared off. At $L=13$ the muzzle survives but so does the shadow, with the mask at 23.9\%; at $L=15$ both are gone and it drops to 18.1\%. None of the lengths we tried keeps one without the other. The duck keeps its mound, because a disk large enough to remove the mound also removes the legs. The tiger's hind legs still merge.
+
+Our sweeps also have limits. We picked $T$ and the kernels by eye for each image, so the values do not come from any rule and would not transfer to a new image. We held $\sigma$ fixed, so we do not yet know how much blur affects these results. The background estimate also assumes that the outer edge of the image is mostly background.
+
+With more time, we would try regrowing the opened mask inside the original threshold mask, which may restore the muzzle without bringing back the shadow. We have not tested this.
 
 
 \printbibliography

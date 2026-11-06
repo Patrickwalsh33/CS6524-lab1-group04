@@ -1,2 +1,3 @@
 sigma: 2.0
-threshold: 0.3  # compromise until the ground is removed: lower values fuse the legs into a block
+threshold: 0.2  # recovers the pale face; the ground that comes with it is removed by the opening
+opening: {shape: disk, size: 5}  # the ground strip is thinner than the legs, so a disk removes it; size 3 leaves some under the back feet

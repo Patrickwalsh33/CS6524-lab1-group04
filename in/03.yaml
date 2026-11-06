@@ -1,2 +1,3 @@
 sigma: 2.0
-threshold: 0.3  # compromise until the ground is removed: lower values fuse the legs into a block
+threshold: 0.15  # the ground can stay in this mask because the opening removes it
+opening: {shape: vertical, size: 19}  # a disk leaves the shadow at T=0.15 and wears the legs to stubs at T=0.2; a vertical line keeps tall shapes and removes the wide shadow, but clips the muzzle
