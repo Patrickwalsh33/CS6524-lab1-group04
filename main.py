@@ -4,7 +4,7 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, grayscale, plots, blur, threshold, edges
+from mypylibs import trajectory, background, plots, blur, threshold, edges
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
@@ -16,16 +16,16 @@ def main(case: int):
     with open(opath.join(ROOT_IN, f'{case:02}.yaml')) as f:
         params = yaml.safe_load(f)
 
-    gray = grayscale.to_grayscale(img)
-    blurred = blur.gaussian_blur(gray, params['sigma'])
+    distance = background.distance(img)
+    blurred = blur.gaussian_blur(distance, params['sigma'])
     mask = threshold.calculate(blurred, params['threshold'],
-                               fill=params.get('fill_holes', True))
+                               fill=params.get('fill_holes', True), above=True)
     magnitude, border = edges.calculate(mask, params.get('edge_threshold', 0.1))
 
     plots.save_mosaic([('Original', img),
-                       ('Grayscale', gray),
+                       ('Distance from background colour', distance),
                        (f'Gaussian blur (σ={params["sigma"]})', blurred),
-                       (f'Threshold < {params["threshold"]} (largest blob)', mask),
+                       (f'Threshold > {params["threshold"]} (largest blob)', mask),
                        ('Sobel gradient magnitude', magnitude),
                        ('Thin Sobel border', border)],
                       opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))

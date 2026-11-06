@@ -1,2 +1,2 @@
 sigma: 2.0
-threshold: 0.7  # legs appear from 0.7; above 0.8 the cream paper floods the mask
+threshold: 0.2  # legs separate from the mound here; below 0.05 the paper starts to flood the mask

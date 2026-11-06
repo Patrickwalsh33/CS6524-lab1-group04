@@ -50,7 +50,9 @@ def fill_holes(mask):
     return ~exterior[1:-1, 1:-1]
 
 
-def calculate(blurred, threshold=0.5, fill=True):
-    """Select dark pixels, remove smaller blobs, and optionally fill holes."""
-    mask = keep_largest(np.asarray(blurred) < threshold)
+def calculate(blurred, threshold=0.5, fill=True, above=False):
+    """Select pixels below (or above) the threshold, remove smaller blobs,
+    and optionally fill holes."""
+    blurred = np.asarray(blurred)
+    mask = keep_largest(blurred > threshold if above else blurred < threshold)
     return fill_holes(mask) if fill else mask

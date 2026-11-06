@@ -1,2 +1,2 @@
 sigma: 2.0
-threshold: 0.7  # compromise: keeps the legs but loses the pale face; at 0.8 the ground fuses the legs
+threshold: 0.3  # compromise until the ground is removed: lower values fuse the legs into a block
