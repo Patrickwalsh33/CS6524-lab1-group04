@@ -4,7 +4,7 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, background, plots, blur, threshold, edges, morphology, fourier
+from mypylibs import trajectory, background, plots, blur, threshold, edges, morphology, fourier, epicycles
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
@@ -65,6 +65,13 @@ def main(case: int):
         reconstructions.append((f'{percent}% (K={count}), error {error:.2f} px', rx, ry))
     plots.save_reconstructions(x, y, reconstructions,
                                opath.join(ROOT_OUT, f'{case:02}_final.{EXT}'))
+
+    # Bonus video. Needs imageio-ffmpeg from requirements.txt; skipped without it so
+    # the three required figures never depend on it.
+    try:
+        epicycles.save_video(x, y, coefficients, opath.join(ROOT_OUT, f'{case:02}.mp4'))
+    except ImportError:
+        print(f'{case:02}: imageio-ffmpeg not installed, skipping the MP4')
 
 if __name__ == '__main__':
     case = 0
