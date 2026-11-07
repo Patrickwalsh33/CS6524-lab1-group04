@@ -10,11 +10,23 @@ ROOT_IN = 'in'
 ROOT_OUT = 'out'
 EXT = 'png'
 
+# Used for any setting an image's YAML leaves out, or for every setting if it has no YAML.
+DEFAULTS = {'sigma': 2.0, 'threshold': 0.15}
+
+
+def load_params(case: int):
+    params = dict(DEFAULTS)
+    config = opath.join(ROOT_IN, f'{case:02}.yaml')
+    if opath.exists(config):
+        with open(config) as f:
+            params.update(yaml.safe_load(f) or {})
+    return params
+
+
 def outline(case: int):
     """Run the segmentation for one image; return the stages and the resampled outline."""
     img = np.array(Image.open(opath.join(ROOT_IN, f'{case:02}.{EXT}')).convert('RGB')) / 255.0
-    with open(opath.join(ROOT_IN, f'{case:02}.yaml')) as f:
-        params = yaml.safe_load(f)
+    params = load_params(case)
 
     distance = background.distance(img)
     blurred = blur.gaussian_blur(distance, params['sigma'])
@@ -56,9 +68,6 @@ def main(case: int):
 
 if __name__ == '__main__':
     case = 0
-    while True:
-        try:
-            main(case)
-        except FileNotFoundError:
-            break
+    while opath.exists(opath.join(ROOT_IN, f'{case:02}.{EXT}')):
+        main(case)
         case += 1
