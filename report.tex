@@ -27,7 +27,7 @@
 \maketitle
 
 \begin{abstract}
-We extract an animal's outline from a single image so that it can be redrawn with Fourier epicycles. Our first version followed the suggested pipeline with one threshold for every image, and it failed on four of our six images. Choosing a threshold per image fixed two of those four. Measuring each pixel's distance from the background colour instead of its brightness then stopped the duck's paper flooding the mask. The giraffe and tiger failed because their ground stayed attached to the feet, and a morphological opening removed it. The giraffe needed a vertical kernel, because a round one could not remove its shadow without damaging its legs.
+We extract an animal's outline from a single image so that it can be redrawn with Fourier epicycles. Our first version followed the suggested pipeline with one threshold for every image, and it failed on four of our six images. Choosing a threshold per image fixed two of those four. Measuring each pixel's distance from the background colour instead of its brightness then stopped the duck's paper flooding the mask. The giraffe and tiger failed because their ground stayed attached to the feet, and a morphological opening removed it. The giraffe needed a vertical kernel, because a round one could not remove its shadow without damaging its legs. Finally, we describe each outline with its Fourier coefficients. The largest 50 of 500 bring every animal to within 2.6 pixels.
 \end{abstract}
 
 \section{Introduction}
@@ -73,11 +73,12 @@ Sobel responds on both sides of an edge, which gives a line about two pixels thi
 We walk the border with Moore neighbour tracing, which visits pixels in the order they appear along the outline. The brief's nearest-neighbour snippet can jump across the shape and leave straight lines through it, and following the contour avoids those jumps. We then resample to $N=500$ points at equal arc length. The endpoint is left out so the first point is not repeated, because the samples will be treated as one period of a signal.
 
 \subsection{Fourier descriptors}
-This stage is not implemented yet. The trajectory will become the complex signal $z[n]=x[n]+iy[n]$, and reconstruction will keep the set $\mathcal{S}_K$ of the $K$ largest coefficients of its DFT $Z[u]$:
+The trajectory becomes the complex signal $z[n]=x[n]+iy[n]$, and we take its DFT $Z[u]$ with \texttt{numpy.fft}. Each coefficient is one epicycle: $|Z[u]|/N$ is its radius, $u$ is how many turns it makes per lap of the outline (negative $u$ turns the other way), and $\arg Z[u]$ is its starting angle. $Z[0]/N$ does not turn at all; it is the centroid. Reconstruction keeps the set $\mathcal{S}_K$ of the $K$ coefficients with the largest amplitude:
 \begin{equation}
 z'[n] = \frac{1}{N}\sum_{u\in\mathcal{S}_K} Z[u]\,e^{2\pi i u n/N}.
 \label{eq:fourier}
 \end{equation}
+Read literally, the brief's sum over $u=0,\dots,K-1$ keeps only circles turning one way, because the negative frequencies sit at the end of the DFT. Ranking by amplitude picks from both directions.
 
 \section{Choosing the threshold}
 Our first configuration used grayscale, kept pixels darker than $T=0.5$, and set $\sigma=2$ for every image. That value only caught the darkest parts of the lighter animals: the mask covered 1\% of the giraffe image, 2\% of the squid, 5\% of the fish and 7\% of the tiger. The giraffe's mask was a thin strip along its neck and back.
@@ -140,10 +141,22 @@ A disk of radius 5 works on the tiger (Fig.~\ref{fig:ground}). With the ground h
 \label{fig:ground}
 \end{figure}
 
+\section{Fourier reconstruction}
+\label{sec:fourier}
+For each image's final figure we keep 5\%, 10\%, up to 100\% of the $N=500$ coefficients, so $K$ runs from 25 to 500. Each panel's title gives the mean distance between the reconstruction and the traced outline. At 100\% that distance is zero to rounding, which confirms the transform and its inverse match. The required range starts too late to show much, though. By $K=100$ every animal is within 0.65 pixels of its outline, and the later panels cannot be told apart.
+
+Fig.~\ref{fig:harmonics} shows the giraffe below that range. Two coefficients give the centroid and a single circle. By $K=10$ the neck is there but the legs are a rough shape; at $K=25$ the legs separate, and at $K=50$ the head and feet sharpen. Compact outlines settle fastest. At $K=10$ the buffalo is within 8.1 pixels, but the squid's tentacles leave it 20.7 pixels off, and it is still the worst at $K=50$ with 2.6.
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{low_harmonics.png}}
+\caption{The giraffe rebuilt from its $K$ largest coefficients (blue) over the traced outline (grey), with the mean error. These values are all below the 5\% where the required figure starts.}
+\label{fig:harmonics}
+\end{figure}
+
 \section{Discussion}
 All six images now give a recognisable outline, but each fix has a cost. The vertical kernel removes anything thin and horizontal, so the giraffe loses its muzzle and its feet are squared off. At $L=13$ the muzzle survives but so does the shadow, with the mask at 23.9\%; at $L=15$ both are gone and it drops to 18.1\%. None of the lengths we tried keeps one without the other. The duck keeps its mound, because a disk large enough to remove the mound also removes the legs. The tiger's hind legs still merge.
 
-Our sweeps also have limits. We picked $T$ and the kernels by eye for each image, so the values do not come from any rule and would not transfer to a new image. We held $\sigma$ fixed, so we do not yet know how much blur affects these results. The background estimate also assumes that the outer edge of the image is mostly background.
+Our sweeps also have limits. We picked $T$ and the kernels by eye for each image, so the values do not come from any rule and would not transfer to a new image. We held $\sigma$ fixed, so we do not yet know how much blur affects these results. The background estimate also assumes that the outer edge of the image is mostly background. Finally, zero error at 100\% only means we match our 500 samples. Those samples are 1.8 to 4.2 pixels apart along the outline, widest on the squid, so any detail smaller than that is gone before the Fourier stage starts.
 
 With more time, we would try regrowing the opened mask inside the original threshold mask, which may restore the muzzle without bringing back the shadow. We have not tested this.
 

@@ -4,14 +4,14 @@ import numpy as np
 
 from PIL import Image
 from os import path as opath
-from mypylibs import trajectory, background, plots, blur, threshold, edges, morphology
+from mypylibs import trajectory, background, plots, blur, threshold, edges, morphology, fourier
 
 ROOT_IN = 'in'
 ROOT_OUT = 'out'
 EXT = 'png'
 
-def main(case: int):
-
+def outline(case: int):
+    """Run the segmentation for one image; return the stages and the resampled outline."""
     img = np.array(Image.open(opath.join(ROOT_IN, f'{case:02}.{EXT}')).convert('RGB')) / 255.0
     with open(opath.join(ROOT_IN, f'{case:02}.yaml')) as f:
         params = yaml.safe_load(f)
@@ -35,13 +35,24 @@ def main(case: int):
                ('Sobel gradient magnitude', magnitude),
                ('Thin Sobel border', border)]
 
-    plots.save_mosaic(stages, opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
-
     x, y = trajectory.calculate(border, params.get('num_samples', 500))
+    return stages, x, y
+
+
+def main(case: int):
+    stages, x, y = outline(case)
+    plots.save_mosaic(stages, opath.join(ROOT_OUT, f'{case:02}_transforms.{EXT}'))
     plots.save_trajectory(x, y, opath.join(ROOT_OUT, f'{case:02}_trajectory.{EXT}'))
 
-    # Fourier reconstruction is the next stage.
-    # plt.savefig(opath.join(ROOT_OUT, f'{case:02}_final.{EXT}'))
+    coefficients = fourier.descriptors(x, y)
+    reconstructions = []
+    for percent in range(5, 101, 5):
+        count = round(percent / 100 * len(coefficients))
+        rx, ry = fourier.reconstruct(coefficients, count)
+        error = np.mean(np.hypot(rx - x, ry - y))
+        reconstructions.append((f'{percent}% (K={count}), error {error:.2f} px', rx, ry))
+    plots.save_reconstructions(x, y, reconstructions,
+                               opath.join(ROOT_OUT, f'{case:02}_final.{EXT}'))
 
 if __name__ == '__main__':
     case = 0

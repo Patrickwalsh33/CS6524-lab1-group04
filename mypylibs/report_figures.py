@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from PIL import Image
-from mypylibs import background, blur, grayscale, morphology, threshold
+from mypylibs import background, blur, fourier, grayscale, morphology, threshold
 
 SIGMA = 2.0
 VALUES = [0.5, 0.6, 0.7, 0.8, 0.9]
@@ -53,6 +53,45 @@ def ground_removal(out_path):
     plt.close(fig)
 
 
+def pipeline(out_path, case=2):
+    """Compact version of XX_transforms sized for one report column."""
+    from main import outline
+    stages, _, _ = outline(case)
+    short = ['Original', 'Distance', 'Blurred', 'Threshold',
+             'Cleaned mask', 'Sobel magnitude', 'Border']
+    fig, axes = plt.subplots(2, 4, figsize=(5, 2.3))
+    for ax in axes.flat:
+        ax.axis('off')
+    for ax, label, (_, im) in zip(axes.flat, short, stages):
+        ax.imshow(im, cmap='gray')
+        ax.set_title(label, fontsize=8)
+    fig.tight_layout(pad=0.3)
+    fig.savefig(out_path, dpi=300)
+    plt.close(fig)
+
+
+def low_harmonics(out_path, case=3, counts=(2, 3, 5, 10, 25, 50)):
+    """The giraffe rebuilt from very few harmonics, below the 5% where XX_final starts."""
+    from main import outline
+    _, x, y = outline(case)
+    coefficients = fourier.descriptors(x, y)
+    fig, axes = plt.subplots(2, 3, figsize=(3.5, 3.2), sharex=True, sharey=True)
+    for ax, count in zip(axes.flat, counts):
+        rx, ry = fourier.reconstruct(coefficients, count)
+        error = np.mean(np.hypot(rx - x, ry - y))
+        ax.plot(np.append(x, x[0]), np.append(y, y[0]), color='lightgray', linewidth=1.5)
+        ax.plot(np.append(rx, rx[0]), np.append(ry, ry[0]), color='tab:blue', linewidth=0.8)
+        ax.set_ylim(y.max() + 10, y.min() - 10)
+        ax.set_aspect('equal')
+        ax.set_title(f'K={count}: {error:.1f} px', fontsize=8)
+        ax.axis('off')
+    fig.tight_layout(pad=0.3)
+    fig.savefig(out_path, dpi=300)
+    plt.close(fig)
+
+
 if __name__ == '__main__':
     threshold_sweep('assets/latex/threshold_sweep.png')
     ground_removal('assets/latex/ground_removal.png')
+    low_harmonics('assets/latex/low_harmonics.png')
+    pipeline('assets/latex/pipeline_fish.png')

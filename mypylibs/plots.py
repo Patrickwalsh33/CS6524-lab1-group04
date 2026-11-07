@@ -37,3 +37,20 @@ def save_trajectory(x, y, out_path):
     fig.tight_layout()
     fig.savefig(out_path)
     plt.close(fig)
+
+
+def save_reconstructions(x, y, reconstructions, out_path):
+    """One panel per (title, x', y'), with the original outline shown faintly behind."""
+    fig, axes = plt.subplots(4, 5, figsize=(15, 12), sharex=True, sharey=True)
+    margin = max(float(np.ptp(x)), float(np.ptp(y)), 1.0) * 0.05
+    for ax, (title, rx, ry) in zip(axes.flat, reconstructions):
+        ax.plot(np.append(x, x[0]), np.append(y, y[0]), color='lightgray', linewidth=2)
+        ax.plot(np.append(rx, rx[0]), np.append(ry, ry[0]), color='tab:blue', linewidth=1)
+        ax.set_xlim(x.min() - margin, x.max() + margin)
+        ax.set_ylim(y.max() + margin, y.min() - margin)
+        ax.set_aspect('equal')
+        ax.set_title(title)
+        ax.axis('off')
+    fig.tight_layout()
+    fig.savefig(out_path)
+    plt.close(fig)
